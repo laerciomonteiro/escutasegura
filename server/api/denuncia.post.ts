@@ -43,10 +43,7 @@ export default defineEventHandler(async (event) => {
         urgencia: getUrgencyLabel(denunciaSanitizada.urgencia),
         descricao: denunciaSanitizada.descricao,
         local: denunciaSanitizada.local,
-        data: denunciaSanitizada.data,
-        testemunhas: denunciaSanitizada.testemunhas,
-        evidencias: denunciaSanitizada.evidencias,
-        contato: denunciaSanitizada.contato
+        data: denunciaSanitizada.data
       })
 
       await sendTelegramMessage({

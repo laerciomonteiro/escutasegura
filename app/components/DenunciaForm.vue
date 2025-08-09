@@ -91,7 +91,6 @@
           class="form-select"
           :class="{ 'border-red-500': errors.urgencia }"
         >
-          <option value="">Selecione a urgência</option>
           <option value="baixa">Baixa - Situação não urgente</option>
           <option value="media">Média - Requer atenção em breve</option>
           <option value="alta">Alta - Situação crítica</option>
