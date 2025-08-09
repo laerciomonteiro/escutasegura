@@ -55,7 +55,7 @@ export function buildTelegramText(payload: {
   const desc = payload.descricao.length > 3500 ? payload.descricao.slice(0, 3500) + '…' : payload.descricao
   lines.push('*Descrição:*')
   lines.push(`${escapeMarkdown(desc)}`)
-  return lines.join('\n')
+  return lines.join('')
 }
 
 function escapeMarkdown(text: string): string {
