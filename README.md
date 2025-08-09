@@ -1,4 +1,4 @@
-# 🔐 Escuta Segura - Sistema de Denúncia Anônima
+# 🔐 Escuta Segura - Sistema de Denúncia Anônima da 2ª Cia do 8º BPM
 
 Um sistema seguro e confidencial para denúncias anônimas, desenvolvido em Nuxt.js com foco total na privacidade e anonimato dos denunciantes.
 
