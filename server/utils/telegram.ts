@@ -64,7 +64,11 @@ function escapeMarkdown(text: string): string {
 
 function formatDateTime(date: string | Date): string {
   const d = new Date(date)
-  return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'America/Fortaleza'
+  }).format(d)
 }
 
 
