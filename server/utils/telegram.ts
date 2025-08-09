@@ -44,8 +44,7 @@ export function buildTelegramText(payload: {
   const receivedAt = formatDateTime(payload.submittedAt ?? new Date())
 
   lines.push('🚨 *Nova Denúncia Anônima*')
-  lines.push(`🕒 *Recebida em:* ${receivedAt}`)
-  lines.push('────────────────────────────')
+  lines.push(`🕒 *Recebida às:* ${receivedAt}`)
   lines.push(`🆔 *ID:* \`${escapeMarkdown(payload.id)}\``)
   lines.push(`🏷️ *Tipo:* ${escapeMarkdown(payload.tipo)}`)
   lines.push(`❗ *Urgência:* ${escapeMarkdown(payload.urgencia.toUpperCase())}`)
@@ -55,7 +54,7 @@ export function buildTelegramText(payload: {
   const desc = payload.descricao.length > 3500 ? payload.descricao.slice(0, 3500) + '…' : payload.descricao
   lines.push('*Descrição:*')
   lines.push(`${escapeMarkdown(desc)}`)
-  return lines.join('')
+  return lines.join('\n')
 }
 
 function escapeMarkdown(text: string): string {
