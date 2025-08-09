@@ -38,23 +38,33 @@ export function buildTelegramText(payload: {
   testemunhas?: boolean
   evidencias?: boolean
   contato?: string
+  submittedAt?: string | Date
 }): string {
   const lines: string[] = []
-  lines.push(`*Nova Denúncia Anônima*`)
-  lines.push(`*ID:* ${payload.id}`)
-  lines.push(`*Tipo:* ${payload.tipo}`)
-  lines.push(`*Urgência:* ${payload.urgencia.toUpperCase()}`)
-  if (payload.local) lines.push(`*Local:* ${payload.local}`)
-  if (payload.data) lines.push(`*Data:* ${new Date(payload.data).toLocaleDateString('pt-BR')}`)
-  if (payload.contato) lines.push(`*Contato (ofuscado):* ${payload.contato}`)
+  const receivedAt = formatDateTime(payload.submittedAt ?? new Date())
+
+  lines.push('🚨 *Nova Denúncia Anônima*')
+  lines.push(`🕒 *Recebida em:* ${receivedAt}`)
+  lines.push('────────────────────────────')
+  lines.push(`🆔 *ID:* \`${escapeMarkdown(payload.id)}\``)
+  lines.push(`🏷️ *Tipo:* ${escapeMarkdown(payload.tipo)}`)
+  lines.push(`❗ *Urgência:* ${escapeMarkdown(payload.urgencia.toUpperCase())}`)
+  if (payload.local) lines.push(`📍 *Local:* ${escapeMarkdown(payload.local)}`)
+  if (payload.data) lines.push(`📅 *Data do ocorrido:* ${new Date(payload.data).toLocaleDateString('pt-BR')}`)
   lines.push('')
   const desc = payload.descricao.length > 3500 ? payload.descricao.slice(0, 3500) + '…' : payload.descricao
-  lines.push(`*Descrição:*\n${escapeMarkdown(desc)}`)
+  lines.push('*Descrição:*')
+  lines.push(`${escapeMarkdown(desc)}`)
   return lines.join('\n')
 }
 
 function escapeMarkdown(text: string): string {
   return text.replace(/[\\_\*\[\]\(\)~`>#+\-=\|{}.!]/g, (m) => `\\${m}`)
+}
+
+function formatDateTime(date: string | Date): string {
+  const d = new Date(date)
+  return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 }
 
 
