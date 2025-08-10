@@ -1,6 +1,9 @@
+import { Redis } from '@upstash/redis'
 import { sendTelegramMessage, buildTelegramText } from '../utils/telegram'
 import { validateDenuncia, sanitizeDenuncia, generateAnonymousId } from '~/utils/validation'
 import type { Denuncia } from '~/types'
+
+const redis = Redis.fromEnv()
 
 export default defineEventHandler(async (event) => {
   try {
@@ -31,6 +34,30 @@ export default defineEventHandler(async (event) => {
       id: generateAnonymousId(),
       createdAt: new Date()
     })
+
+    // Salvar no Upstash Redis
+    try {
+      const denunciaParaSalvar = {
+        id: denunciaSanitizada.id!,
+        tipo: denunciaSanitizada.tipo,
+        urgencia: denunciaSanitizada.urgencia,
+        createdAt: denunciaSanitizada.createdAt!.toISOString()
+      }
+      
+      const pipeline = redis.pipeline()
+      // Salva o objeto da denúncia
+      pipeline.hset(`denuncia:${denunciaParaSalvar.id}`, denunciaParaSalvar)
+      // Adiciona a um set ordenado para buscas por data
+      pipeline.zadd('denuncias_por_data', {
+        score: denunciaSanitizada.createdAt!.getTime(),
+        member: `denuncia:${denunciaParaSalvar.id}`
+      })
+      await pipeline.exec()
+
+    } catch (dbError) {
+      console.error('Erro ao salvar denúncia no Vercel KV:', dbError)
+      // Continuar mesmo se o DB falhar, o envio ao Telegram é prioritário
+    }
 
     // Configurações
     const config = useRuntimeConfig()
@@ -99,4 +126,3 @@ function getUrgencyLabel(urgencia: string): string {
   }
   return urgencias[urgencia] || urgencia
 }
-

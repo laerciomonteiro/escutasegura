@@ -1,35 +1,25 @@
 export interface Denuncia {
   id?: string
-  tipo: 'porte' | 'trafico' | 'ameaca' | 'disparos' | 'outros'
+  tipo: string
+  urgencia: string
   descricao: string
   local?: string
   data?: string
-  urgencia: 'baixa' | 'media' | 'alta'
+  testemunhas?: boolean
+  evidencias?: boolean
+  contato?: string
   createdAt?: Date
-}
-
-export interface FormErrors {
-  tipo?: string
-  descricao?: string
-  local?: string
-  data?: string
-  urgencia?: string
-}
-
-export interface ApiResponse {
-  success: boolean
-  message: string
-  data?: any
-  error?: string
-}
-
-export interface EmailConfig {
-  user: string
-  pass: string
-  to: string
 }
 
 export interface TelegramConfig {
   botToken: string
   chatId: string
+}
+
+// Interface para o objeto que será salvo no Vercel KV
+export interface DenunciaKV {
+  id: string
+  tipo: string
+  urgencia: string
+  createdAt: string // Salvaremos como string ISO
 }
