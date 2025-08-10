@@ -81,10 +81,27 @@ function calculateStatistics(denuncias: DenunciaKV[]) {
   const byUrgency = countBy(denuncias, 'urgencia')
 
   // Estatísticas temporais
-  const byHour = countBy(denuncias, d => new Date(d.createdAt).getUTCHours().toString())
+  const getFortalezaHour = (dateStr: string) => {
+    const date = new Date(dateStr)
+    // Converte para o fuso de Fortaleza (UTC-3) subtraindo 3 horas do UTC
+    const fortalezaHour = (date.getUTCHours() - 3 + 24) % 24
+    return fortalezaHour.toString()
+  }
+  const getFortalezaDay = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const fortalezaHour = (date.getUTCHours() - 3 + 24) % 24
+    let day = date.getUTCDay()
+    // Se a hora UTC for menor que 3 (0, 1, 2), significa que em Fortaleza ainda é o dia anterior
+    if (date.getUTCHours() < 3) {
+      day = (day - 1 + 7) % 7
+    }
+    return day.toString()
+  }
+
+  const byHour = countBy(denuncias, d => getFortalezaHour(d.createdAt))
   const peakHour = Object.keys(byHour).length > 0 ? Object.keys(byHour).reduce((a, b) => byHour[a] > byHour[b] ? a : b) : 'N/A'
 
-  const byWeekday = countBy(denuncias, d => new Date(d.createdAt).getUTCDay().toString())
+  const byWeekday = countBy(denuncias, d => getFortalezaDay(d.createdAt))
   const peakWeekday = Object.keys(byWeekday).length > 0 ? Object.keys(byWeekday).reduce((a, b) => byWeekday[a] > byWeekday[b] ? a : b) : 'N/A'
   
   return { total, today, week, month, byType, byUrgency, peakHour, peakWeekday }
@@ -122,8 +139,8 @@ function formatStatsMessage(stats: any): string {
   ].join('\n')
   
   const temporal = [
-    '\n*🕒 Estatísticas Temporais*',
-    `Horário de pico: *${peakHour !== 'N/A' ? `${peakHour}h - ${parseInt(peakHour) + 1}h` : 'N/A'}* (UTC)`,
+    '\n*🕒 Estatísticas Temporais (Fuso: Fortaleza)*',
+    `Horário de pico: *${peakHour !== 'N/A' ? `${peakHour}h - ${parseInt(peakHour) + 1}h` : 'N/A'}*`,
     `Dia da semana com mais denúncias: *${peakWeekday !== 'N/A' ? weekdays[parseInt(peakWeekday)] : 'N/A'}*`
   ].join('\n')
 
