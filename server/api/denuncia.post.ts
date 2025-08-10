@@ -3,9 +3,15 @@ import { sendTelegramMessage, buildTelegramText } from '../utils/telegram'
 import { validateDenuncia, sanitizeDenuncia, generateAnonymousId } from '~/utils/validation'
 import type { Denuncia } from '~/types'
 
-const redis = Redis.fromEnv()
-
 export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig()
+
+  // Inicializa o cliente Redis manualmente com as variáveis de ambiente
+  const redis = new Redis({
+    url: config.kvRestApiUrl,
+    token: config.kvRestApiToken,
+  })
+
   try {
     // Verificar se é POST
     if (getMethod(event) !== 'POST') {
@@ -55,12 +61,11 @@ export default defineEventHandler(async (event) => {
       await pipeline.exec()
 
     } catch (dbError) {
-      console.error('Erro ao salvar denúncia no Vercel KV:', dbError)
-      // Continuar mesmo se o DB falhar, o envio ao Telegram é prioritário
+      console.error('Erro CRÍTICO ao salvar denúncia no Upstash Redis:', dbError)
+      // Envia um alerta para o chat sobre a falha no DB
+      const alertText = `🚨 *ALERTA DE SISTEMA* 🚨\n\nA denúncia com ID \`${denunciaSanitizada.id}\` foi recebida e enviada, mas *FALHOU* ao ser salva no banco de dados.\n\n*Erro:* Falha na conexão ou escrita no Redis. Verifique os logs da função e as variáveis de ambiente na Vercel.`
+      await sendTelegramMessage({ botToken: config.telegramBotToken, chatId: config.telegramChatId }, alertText)
     }
-
-    // Configurações
-    const config = useRuntimeConfig()
     
     // Enviar via Telegram (obrigatório)
     if (config.telegramBotToken && config.telegramChatId) {

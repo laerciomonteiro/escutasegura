@@ -24,7 +24,12 @@ export default defineEventHandler(async (event) => {
   const chatId = body.message.chat.id.toString()
   const command = body.message.text.trim()
   const telegramConfig = { botToken: config.telegramBotToken, chatId: config.telegramChatId }
-  const redis = Redis.fromEnv()
+  
+  // Inicializa o cliente Redis manualmente com as variáveis de ambiente
+  const redis = new Redis({
+    url: config.kvRestApiUrl,
+    token: config.kvRestApiToken,
+  })
 
   console.log(`Comando recebido: "${command}" do Chat ID: ${chatId}`)
   console.log(`Chat ID esperado: ${config.telegramChatId}`)

@@ -14,26 +14,14 @@ export default defineNuxtConfig({
     telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
     telegramChatId: process.env.TELEGRAM_CHAT_ID,
 
+    // Variáveis do Vercel KV (que é Upstash Redis)
+    kvRestApiUrl: process.env.KV_REST_API_URL,
+    kvRestApiToken: process.env.KV_REST_API_TOKEN,
+
     // Configurações públicas
     public: {
       appName: 'Escuta Segura',
       appDescription: 'Sistema de denúncia anônima'
-    }
-  },
-  
-  security: {
-    headers: {
-      contentSecurityPolicy: {
-        'base-uri': ["'self'"],
-        'font-src': ["'self'", 'https:', 'data:'],
-        'form-action': ["'self'"],
-        'frame-ancestors': ["'none'"],
-        'img-src': ["'self'", 'data:', 'https:'],
-        'object-src': ["'none'"],
-        'script-src-attr': ["'none'"],
-        'style-src': ["'self'", 'https:', "'unsafe-inline'"],
-        'upgrade-insecure-requests': true
-      }
     }
   },
   
