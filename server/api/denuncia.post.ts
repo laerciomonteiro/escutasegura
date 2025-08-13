@@ -1,100 +1,111 @@
 import { Redis } from '@upstash/redis'
-import { sendTelegramMessage, buildTelegramText } from '../utils/telegram'
-import { validateDenuncia, sanitizeDenuncia, generateAnonymousId } from '~/utils/validation'
+import { sendTelegramMessage, buildTelegramText, sendTelegramPhoto } from '../utils/telegram'
+import { validateDenuncia } from '~/utils/validation'
 import type { Denuncia } from '~/types'
+
+// Função auxiliar para converter string para booleano
+const toBoolean = (value: string | undefined) => value === 'true'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
 
-  // Inicializa o cliente Redis manualmente com as variáveis de ambiente
   const redis = new Redis({
     url: config.kvRestApiUrl,
     token: config.kvRestApiToken,
   })
 
   try {
-    // Verificar se é POST
     if (getMethod(event) !== 'POST') {
-      throw createError({
-        statusCode: 405,
-        statusMessage: 'Método não permitido'
-      })
+      throw createError({ statusCode: 405, statusMessage: 'Método não permitido' })
     }
 
-    // Ler dados do corpo da requisição
-    const body = await readBody(event)
+    const multipart = await readMultipartFormData(event)
     
-    // Validar dados
-    const validation = validateDenuncia(body)
-    if (!validation.isValid) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: 'Dados inválidos',
-        data: validation.errors
-      })
-    }
+    const body: Record<string, any> = {}
+    let imageFile: { name: string, data: Buffer, type: string } | undefined
 
-    // Sanitizar dados para proteger a privacidade
-    const denunciaSanitizada: Denuncia = sanitizeDenuncia({
-      ...body,
-      id: generateAnonymousId(),
-      createdAt: new Date()
+    multipart?.forEach((part) => {
+      if (part.name) {
+        if (part.filename) {
+          imageFile = {
+            name: part.filename,
+            data: part.data,
+            type: part.type!,
+          }
+        } else {
+          body[part.name] = part.data.toString()
+        }
+      }
     })
 
-    // Salvar no Upstash Redis
+    const denunciaData: Partial<Denuncia> = {
+      tipo: body.tipo,
+      descricao: body.descricao,
+      local: body.local,
+      data: body.data,
+      urgencia: body.urgencia,
+      testemunhas: toBoolean(body.testemunhas),
+      evidencias: toBoolean(body.evidencias),
+      contato: body.contato,
+    }
+
+    const validation = validateDenuncia(denunciaData)
+    if (!validation.isValid) {
+      throw createError({ statusCode: 400, statusMessage: 'Dados inválidos', data: validation.errors })
+    }
+
+    const id = `ME${Date.now().toString(36)}${Math.random().toString(36).substring(2, 6)}`.toUpperCase()
+    const createdAt = new Date()
+
+    // Objeto final da denúncia, sem sanitização
+    const denunciaCompleta: Denuncia = {
+      id,
+      createdAt,
+      tipo: denunciaData.tipo!,
+      urgencia: denunciaData.urgencia!,
+      descricao: denunciaData.descricao!,
+      local: denunciaData.local,
+      data: denunciaData.data,
+    }
+
     try {
       const denunciaParaSalvar = {
-        id: denunciaSanitizada.id!,
-        tipo: denunciaSanitizada.tipo,
-        urgencia: denunciaSanitizada.urgencia,
-        createdAt: denunciaSanitizada.createdAt!.toISOString()
+        id: denunciaCompleta.id!,
+        tipo: denunciaCompleta.tipo,
+        urgencia: denunciaCompleta.urgencia,
+        createdAt: denunciaCompleta.createdAt!.toISOString()
       }
       
       const pipeline = redis.pipeline()
-      // Salva o objeto da denúncia
       pipeline.hset(`denuncia:${denunciaParaSalvar.id}`, denunciaParaSalvar)
-      // Adiciona a um set ordenado para buscas por data
       pipeline.zadd('denuncias_por_data', {
-        score: denunciaSanitizada.createdAt!.getTime(),
+        score: denunciaCompleta.createdAt!.getTime(),
         member: `denuncia:${denunciaParaSalvar.id}`
       })
       await pipeline.exec()
-
     } catch (dbError) {
       console.error('Erro CRÍTICO ao salvar denúncia no Upstash Redis:', dbError)
-      // Envia um alerta para o chat sobre a falha no DB
-      const alertText = `🚨 *ALERTA DE SISTEMA* 🚨\n\nA denúncia com ID \`${denunciaSanitizada.id}\` foi recebida e enviada, mas *FALHOU* ao ser salva no banco de dados.\n\n*Erro:* Falha na conexão ou escrita no Redis. Verifique os logs da função e as variáveis de ambiente na Vercel.`
-      await sendTelegramMessage({ botToken: config.telegramBotToken, chatId: config.telegramChatId }, alertText)
     }
     
-    // Enviar via Telegram (obrigatório)
     if (config.telegramBotToken && config.telegramChatId) {
       const text = buildTelegramText({
-        id: denunciaSanitizada.id!,
-        tipo: getTipoLabel(denunciaSanitizada.tipo),
-        urgencia: getUrgencyLabel(denunciaSanitizada.urgencia),
-        descricao: denunciaSanitizada.descricao,
-        local: denunciaSanitizada.local,
-        data: denunciaSanitizada.data,
-        testemunhas: (body as any)?.testemunhas,
-        evidencias: (body as any)?.evidencias,
-        contato: (body as any)?.contato,
-        submittedAt: denunciaSanitizada.createdAt || new Date()
+        ...denunciaCompleta,
+        id: denunciaCompleta.id!,
+        urgencia: getUrgencyLabel(denunciaCompleta.urgencia),
+        tipo: getTipoLabel(denunciaCompleta.tipo),
+        submittedAt: denunciaCompleta.createdAt
       })
+      const telegramConfig = { botToken: config.telegramBotToken, chatId: config.telegramChatId }
 
-      await sendTelegramMessage({
-        botToken: config.telegramBotToken,
-        chatId: config.telegramChatId
-      }, text)
-
-      return {
-        success: true,
-        message: 'Denúncia enviada via Telegram com sucesso',
-        id: denunciaSanitizada.id
+      if (imageFile) {
+        await sendTelegramPhoto(telegramConfig, text, imageFile)
+      } else {
+        await sendTelegramMessage(telegramConfig, text)
       }
+
+      return { success: true, message: 'Denúncia enviada com sucesso', id: denunciaCompleta.id }
     }
 
-    // Se faltarem variáveis do Telegram, retorna erro de configuração clara
     throw createError({
       statusCode: 500,
       statusMessage: 'Configuração ausente',
@@ -103,7 +114,6 @@ export default defineEventHandler(async (event) => {
 
   } catch (error: any) {
     console.error('Erro ao processar denúncia:', error)
-    
     throw createError({
       statusCode: error?.statusCode || 500,
       statusMessage: error?.statusMessage || 'Erro interno do servidor',

@@ -23,3 +23,5 @@ export interface DenunciaKV {
   urgencia: string
   createdAt: string // Salvaremos como string ISO
 }
+
+export type FormErrors = Record<string, string>
