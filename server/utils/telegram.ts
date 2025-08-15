@@ -44,7 +44,7 @@ export function buildTelegramText(payload: {
   const receivedAt = formatDateTime(payload.submittedAt ?? new Date())
 
   lines.push('🚨 *Nova Denúncia Anônima*')
-  lines.push(`🕒 *Recebida às:* ${receivedAt}`)
+  lines.push(`🕒 *Recebida em:* ${receivedAt}`)
   lines.push(`🆔 *ID:* \`${escapeMarkdown(payload.id)}\``)
   lines.push(`🏷️ *Tipo:* ${escapeMarkdown(payload.tipo)}`)
   lines.push(`❗ *Urgência:* ${escapeMarkdown(payload.urgencia.toUpperCase())}`)
@@ -88,6 +88,7 @@ export async function sendTelegramPhoto(config: TelegramConfig, caption: string,
 function formatDateTime(date: string | Date): string {
   const d = new Date(date)
   return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
     timeStyle: 'short',
     timeZone: 'America/Fortaleza'
   }).format(d)
