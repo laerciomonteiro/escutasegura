@@ -76,7 +76,7 @@ useHead({
     { name: 'viewport', content: 'width=device-width, initial-scale=1' },
     { name: 'robots', content: 'noindex, nofollow' }, // Para maior privacidade
     { property: 'og:type', content: 'website' },
-    { property: 'og:title', content: 'Escuta Segura - Sistema de Denúncia Anônima da 2ª Cia do 8º BPM' },
+    { property: 'og:title', content: 'Escuta Segura - Sistema de Denúncias Anônimas' },
     { property: 'og:description', content: 'Sistema seguro e anônimo para denúncias' }
   ]
 })

@@ -8,7 +8,9 @@
       <p class="text-lg text-gray-600 mb-6 max-w-2xl mx-auto">
         Um canal seguro e confidencial para denúncias de tráfico de drogas, porte ilegal de armas, entre outros crimes.
         Sua identidade será completamente protegida.<br><br></br>
-        <b>VICENTE PINZÓN, CAIS DO PORTO E MUCURIPE.</b>
+        <b>VICENTE PINZÓN, CAIS DO PORTO E MUCURIPE. INCLUI:</b> Lagoa do Coração, Castelo Encantado, Alto da Paz, Fazendinha, CDD, Comunidade das Placas, Labirinto,
+          Pilão, Buraco e Favela dos Índios.
+        
       </p>
       <br></br>
       <!-- Garantias de Segurança -->
@@ -205,9 +207,9 @@
 <script setup lang="ts">
 // Configuração da página
 useHead({
-  title: 'Sistema de Denúncia Anônima',
+  title: 'Sistema de Denúncias Anônimas',
   meta: [
-    { name: 'description', content: 'Canal seguro e anônimo para denúncias de irregularidades, assédio e discriminação' }
+    { name: 'description', content: 'Canal seguro e anônimo para denúncias de porte ilegal de armas, tráfico de drogas e etc.' }
   ]
 })
 </script>
