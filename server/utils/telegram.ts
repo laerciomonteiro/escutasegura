@@ -93,3 +93,38 @@ function formatDateTime(date: string | Date): string {
     timeZone: 'America/Fortaleza'
   }).format(d)
 }
+
+export async function sendTelegramMediaGroup(
+  config: TelegramConfig,
+  denunciaId: string,
+  photos: { data: Buffer; type: string; name: string }[]
+): Promise<void> {
+  const url = `https://api.telegram.org/bot${config.botToken}/sendMediaGroup`
+  const formData = new FormData()
+  formData.append('chat_id', config.chatId)
+
+  const media: any[] = photos.map((photo, index) => {
+    const attachName = `photo_${index}`
+    const photoBlob = new Blob([photo.data as any], { type: photo.type })
+    formData.append(attachName, photoBlob, photo.name)
+
+    return {
+      type: 'photo',
+      media: `attach://${attachName}`,
+      caption: `Foto ${index + 1} (ID: \`${denunciaId}\`)`,
+      parse_mode: 'Markdown',
+    }
+  })
+
+  formData.append('media', JSON.stringify(media))
+
+  const response = await fetch(url, {
+    method: 'POST',
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '')
+    throw new Error(`Falha ao enviar grupo de mídias ao Telegram: ${response.status} ${response.statusText} ${body}`)
+  }
+}

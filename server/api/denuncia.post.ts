@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis'
-import { sendTelegramMessage, buildTelegramText, sendTelegramPhoto } from '../utils/telegram'
+import { sendTelegramMessage, buildTelegramText, sendTelegramPhoto, sendTelegramMediaGroup } from '../utils/telegram'
 import { validateDenuncia } from '~/utils/validation'
 import type { Denuncia } from '~/types'
 
@@ -22,16 +22,16 @@ export default defineEventHandler(async (event) => {
     const multipart = await readMultipartFormData(event)
     
     const body: Record<string, any> = {}
-    let imageFile: { name: string, data: Buffer, type: string } | undefined
+    const imageFiles: { name: string, data: Buffer, type: string }[] = []
 
     multipart?.forEach((part) => {
       if (part.name) {
-        if (part.filename) {
-          imageFile = {
+        if (part.filename && part.name === 'imagens') {
+          imageFiles.push({
             name: part.filename,
             data: part.data,
             type: part.type!,
-          }
+          })
         } else {
           body[part.name] = part.data.toString()
         }
@@ -97,9 +97,16 @@ export default defineEventHandler(async (event) => {
       })
       const telegramConfig = { botToken: config.telegramBotToken, chatId: config.telegramChatId }
 
-      if (imageFile) {
-        await sendTelegramPhoto(telegramConfig, text, imageFile)
+      if (imageFiles.length > 1) {
+        // Para múltiplas fotos, envia o texto primeiro
+        await sendTelegramMessage(telegramConfig, text)
+        // E depois o grupo de mídias
+        await sendTelegramMediaGroup(telegramConfig, denunciaCompleta.id!, imageFiles)
+      } else if (imageFiles.length === 1) {
+        // Para foto única, mantém o comportamento original
+        await sendTelegramPhoto(telegramConfig, text, imageFiles[0])
       } else {
+        // Sem fotos, apenas a mensagem de texto
         await sendTelegramMessage(telegramConfig, text)
       }
 

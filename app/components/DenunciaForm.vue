@@ -98,31 +98,49 @@
         <p v-if="errors.urgencia" class="form-error">{{ errors.urgencia }}</p>
       </div>
 
-      <!-- Upload de Imagem -->
+      <!-- Upload de Imagens -->
       <div>
         <label for="imagem" class="block text-sm font-medium text-gray-700 mb-2">
-          Anexar Imagem (opcional)
+          Anexar Imagens (opcional, até 4)
         </label>
         <input
           id="imagem"
           type="file"
           @change="handleFileChange"
           accept="image/*"
+          multiple
           class="form-input file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-          :disabled="isCompressing"
+          :disabled="isCompressing || imageFiles.length >= 4"
         />
         <div v-if="isCompressing" class="flex items-center text-sm text-gray-600 mt-2">
           <svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <span>Processando imagem...</span>
+          <span>Processando imagens...</span>
         </div>
-        <div v-if="imagePreviewUrl" class="mt-4 relative w-48">
-          <img :src="imagePreviewUrl" alt="Preview da imagem" class="rounded-md w-full h-auto" />
-          <button @click="removeImage" type="button" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 leading-none">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-          </button>
+        <div v-if="imagePreviews.length > 0" class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div v-for="(src, index) in imagePreviews" :key="index" class="relative">
+            <img :src="src" alt="Preview da imagem" class="rounded-md w-full h-24 object-cover" />
+            <button @click="removeImage(index)" type="button" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 leading-none">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barra de Progresso e Processamento -->
+      <div v-if="isUploading || isProcessing">
+        <div v-if="isUploading" class="w-full bg-gray-200 rounded-full h-2.5">
+          <div class="bg-blue-600 h-2.5 rounded-full" :style="{ width: uploadProgress + '%' }"></div>
+          <p class="text-center text-sm mt-1">{{ uploadProgress }}%</p>
+        </div>
+        <div v-if="isProcessing" class="flex items-center justify-center text-sm text-gray-600 mt-2">
+          <svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span>Processando no servidor...</span>
         </div>
       </div>
 
@@ -148,21 +166,21 @@
       <div class="flex flex-col sm:flex-row gap-3 pt-4">
         <button
           type="submit"
-          :disabled="isSubmitting || isCompressing"
+          :disabled="isSubmitting || isCompressing || isUploading || isProcessing"
           class="btn-primary flex-1 flex items-center justify-center space-x-2"
         >
-          <svg v-if="isSubmitting" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+          <svg v-if="isSubmitting || isUploading || isProcessing" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <span>{{ isSubmitting ? 'Enviando...' : 'Enviar Denúncia' }}</span>
+          <span>{{ isUploading ? `Enviando Mídia... (${uploadProgress}%)` : (isProcessing ? 'Processando...' : (isSubmitting ? 'Enviando...' : 'Enviar Denúncia')) }}</span>
         </button>
         
         <button
           type="button"
           @click="resetForm"
           class="btn-secondary flex-1"
-          :disabled="isSubmitting || isCompressing"
+          :disabled="isSubmitting || isCompressing || isUploading || isProcessing"
         >
           Limpar Formulário
         </button>
@@ -205,15 +223,15 @@ const form = ref<Partial<Denuncia>>({
   descricao: '',
   local: '',
   data: '',
-  testemunhas: false,
-  evidencias: false,
-  contato: '',
   urgencia: undefined
 })
 
-const imageFile = ref<File | null>(null)
-const imagePreviewUrl = ref<string | null>(null)
+const imageFiles = ref<File[]>([])
+const imagePreviews = ref<string[]>([])
 const isCompressing = ref(false)
+const isUploading = ref(false)
+const isProcessing = ref(false)
+const uploadProgress = ref(0)
 
 // Estado de validação e submissão
 const errors = ref<FormErrors>({})
@@ -226,51 +244,51 @@ const maxDate = computed(() => {
   return new Date().toISOString().split('T')[0]
 })
 
-// Função para lidar com a seleção de arquivo
+// Função para lidar com a seleção de arquivos
 async function handleFileChange(event: Event) {
   const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
+  const files = Array.from(target.files ?? [])
 
-  if (!file) {
-    imageFile.value = null
-    imagePreviewUrl.value = null
-    return
-  }
+  if (files.length === 0) return
 
-  if (!file.type.startsWith('image/')) {
-    alert('Por favor, selecione apenas arquivos de imagem.')
+  if (imageFiles.value.length + files.length > 4) {
+    alert('Você pode enviar no máximo 4 imagens.')
     target.value = ''
     return
   }
 
-  const options = {
-    maxSizeMB: 1,
-    maxWidthOrHeight: 1920,
-    useWebWorker: true,
-  }
-
+  isCompressing.value = true
   try {
-    isCompressing.value = true
-    const compressedFile = await imageCompression(file, options)
-    imageFile.value = compressedFile
-    imagePreviewUrl.value = URL.createObjectURL(compressedFile)
+    const options = {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1920,
+      useWebWorker: true,
+    }
+
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) {
+        alert(`O arquivo '${file.name}' não é uma imagem e será ignorado.`)
+        continue
+      }
+      const compressedFile = await imageCompression(file, options)
+      imageFiles.value.push(compressedFile)
+      imagePreviews.value.push(URL.createObjectURL(compressedFile))
+    }
   } catch (error) {
-    console.error('Erro ao comprimir imagem:', error)
-    alert('Ocorreu um erro ao processar a imagem. Tente novamente.')
-    imageFile.value = null
-    imagePreviewUrl.value = null
+    console.error('Erro ao comprimir imagens:', error)
+    alert('Ocorreu um erro ao processar as imagens. Tente novamente.')
   } finally {
     isCompressing.value = false
+    target.value = ''
   }
 }
 
 // Função para remover imagem
-function removeImage() {
-  imageFile.value = null
-  imagePreviewUrl.value = null
-  const fileInput = document.getElementById('imagem') as HTMLInputElement
-  if (fileInput) {
-    fileInput.value = ''
+function removeImage(index: number) {
+  imageFiles.value.splice(index, 1)
+  const preview = imagePreviews.value.splice(index, 1)[0]
+  if (preview) {
+    URL.revokeObjectURL(preview)
   }
 }
 
@@ -288,37 +306,73 @@ async function submitForm() {
   
   isSubmitting.value = true
   
-  try {
-    const formData = new FormData()
-    for (const key in form.value) {
-      const value = form.value[key as keyof typeof form.value]
-      if (value !== null && value !== undefined) {
-        formData.append(key, value.toString())
+  const formData = new FormData()
+  for (const key in form.value) {
+    const value = form.value[key as keyof typeof form.value]
+    if (value !== null && value !== undefined) {
+      formData.append(key, value.toString())
+    }
+  }
+
+  imageFiles.value.forEach((file) => {
+    formData.append('imagens', file, file.name)
+  })
+
+  await new Promise<{ success: boolean; message: string; id: string }>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    
+    xhr.open('POST', '/api/denuncia', true)
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percentComplete = Math.round((event.loaded / event.total) * 100);
+        uploadProgress.value = percentComplete;
+        if (percentComplete === 100) {
+          isUploading.value = false;
+          isProcessing.value = true;
+        }
       }
     }
 
-    if (imageFile.value) {
-      formData.append('imagem', imageFile.value, imageFile.value.name)
+    xhr.onload = () => {
+      isProcessing.value = false;
+      isUploading.value = false;
+      isSubmitting.value = false;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const response = JSON.parse(xhr.responseText)
+        if (response.success) {
+          denunciaId.value = response.id
+          showSuccess.value = true
+          resetForm()
+          resolve(response)
+        } else {
+          reject(new Error(response.message || 'Falha no envio'))
+        }
+      } else {
+        reject(new Error(`${xhr.status}: ${xhr.statusText}`))
+      }
     }
 
-    const response = await $fetch<{ success: boolean; message: string; id: string }>('/api/denuncia', {
-      method: 'POST',
-      body: formData
-    })
-    
-    if (response.success) {
-      denunciaId.value = response.id
-      showSuccess.value = true
-      resetForm()
-    } else {
-      throw new Error(response.message)
+    xhr.onerror = () => {
+      isProcessing.value = false;
+      isUploading.value = false;
+      isSubmitting.value = false;
+      console.error('Erro de rede ao enviar denúncia:', xhr.statusText)
+      alert('Erro de rede ao enviar denúncia. Verifique sua conexão e tente novamente.')
+      reject(new Error('Erro de rede'))
     }
-  } catch (error) {
+
+    if (imageFiles.value.length > 0) {
+      isUploading.value = true;
+    }
+    xhr.send(formData)
+  }).catch((error) => {
     console.error('Erro ao enviar denúncia:', error)
     alert('Erro ao enviar denúncia. Tente novamente.')
-  } finally {
     isSubmitting.value = false
-  }
+    isUploading.value = false
+    isProcessing.value = false;
+  })
 }
 
 // Função para limpar formulário
@@ -328,13 +382,16 @@ function resetForm() {
     descricao: '',
     local: '',
     data: '',
-    testemunhas: false,
-    evidencias: false,
-    contato: '',
     urgencia: undefined
   }
   errors.value = {}
-  removeImage()
+  for (const preview of imagePreviews.value) {
+    URL.revokeObjectURL(preview)
+  }
+  imageFiles.value = []
+  imagePreviews.value = []
+  uploadProgress.value = 0
+  isProcessing.value = false
 }
 
 // Função para fechar modal de sucesso
